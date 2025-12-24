@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       ">
+
+    <!--组件扫描-->
+    <context:component-scan base-package="com.dai"/>
+
+    <!--加载 properties 文件-->
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+
+    <!--配置数据源信息-->
+    <bean id="dataSource1" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--配置SqlSessionFactoryBean，作用将SqlSessionFactory存储到spring容器-->
+    <bean class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource1"/>
+    </bean>
+
+    <!--MapperScannerConfigurer,作用扫描指定的包，产生Mapper对象存储到Spring容器-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.itheima.mapper"/>
+    </bean>
+
+    <!--配置平台事务管理器-->
+    <bean id="transactionManager1" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--配置 Spring 提供好的 Advice-->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager1">
+        <tx:attributes>
+            <!--
+                配置不同的方法的事务属性
+                name：方法名称  *代表通配符  添加操作addUser、addAccount、addOrders=>add*
+                isolation：事务的隔离级别，解决事务并发问题
+                timeout：超时时间 默认-1 单位是秒
+                read-only：是否只读，查询操作设置为只读
+                propagation：事务的传播行为，解决业务方法调用业务方法（事务嵌套问题）
+            -->
+            <!--<tx:method name="transferMoney"
+                            isolation="READ_COMMITTED"
+                            propagation="REQUIRED"
+                            timeout="3"
+                            read-only="false"
+                            />
+            <tx:method name="registAccount"/>
+            <tx:method name="add*"/>
+            <tx:method name="update*"/>
+            <tx:method name="delete*"/>
+            <tx:method name="select*"/>-->
+            <tx:method name="*"/>
+
+        </tx:attributes>
+    </tx:advice>
+
+    <!--事务增强的 aop-->
+    <aop:config>
+        <!--配置切点表达式-->
+        <aop:pointcut id="txPointcut" expression="execution(* com.dai.service.impl.*.*(..))"/>
+        <!--配置织入关系  通知advice-ref引入Spring提供好的-->
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"/>
+    </aop:config>
+
+
+</beans>
